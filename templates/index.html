@@ -1,0 +1,179 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>ElectroFree-Bot</title>
+
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background: linear-gradient(135deg, #1e3c72, #2a5298, #6a11cb, #2575fc);
+      background-size: 400% 400%;
+      animation: gradientMove 15s ease infinite;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Smooth gradient animation */
+    @keyframes gradientMove {
+      0% {background-position: 0% 50%;}
+      50% {background-position: 100% 50%;}
+      100% {background-position: 0% 50%;}
+    }
+
+    /* Smooth scrolling for chat */
+    #chat-history {
+      scroll-behavior: smooth;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 640px) {
+      .chatbox-container {
+        width: 100% !important;
+        height: auto !important;
+        margin-top: 10px;
+      }
+
+      .header-text {
+        font-size: 20px !important;
+        padding: 10px !important;
+      }
+
+      .input-area input {
+        font-size: 14px !important;
+        padding: 10px !important;
+      }
+
+      .send-button {
+        padding: 12px !important;
+        font-size: 16px !important;
+      }
+
+      #chat-history {
+        padding: 10px !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center text-white">
+  <div class="main text-center mb-8">
+    <img src="{{ url_for('static', filename='img/ElectroFree_smaller.png') }}" alt="ElectroFree Chatbot" class="mx-auto rounded-lg shadow-lg" width="500" height="600">
+  </div>
+  
+  <div class="bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#334155] shadow-[0px_20px_50px_rgba(0,0,0,0.8)] rounded-3xl w-full max-w-md flex flex-col h-[80vh] chatbox-container">
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-indigo-600 to-purple-700 text-white text-center text-xl font-extrabold p-4 rounded-t-3xl shadow-inner tracking-wide header-text">
+      ⚡ ElectroFree Chatbot
+    </div>
+
+    <!-- Chat History -->
+    <div id="chat-history" class="flex-1 overflow-y-auto p-6 space-y-5 bg-gray-900 bg-opacity-70 backdrop-blur-md rounded-b-3xl">
+      <!-- Messages will appear here -->
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area p-4 border-t border-gray-700 flex items-center bg-gray-800 space-x-3">
+      <input id="user-input" type="text" placeholder="Type your message..." class="flex-1 px-5 py-3 border border-gray-600 rounded-full bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-base font-medium transition-all duration-300 shadow-inner tracking-wide" autocomplete="off">
+      <button id="send-button" class="send-button p-3 bg-gradient-to-r from-purple-600 to-indigo-700 hover:scale-110 hover:from-purple-700 hover:to-indigo-800 transition-transform duration-300 text-white rounded-full shadow-lg" aria-label="Send Message">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div id="loader" class="hidden text-center text-gray-300 mt-4 animate-pulse font-semibold">
+    Thinking ... 🤖
+  </div>
+
+  <script>
+    const chatHistory = document.getElementById('chat-history');
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
+    const loader = document.getElementById('loader');
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      displayMessage(message, 'user');
+      userInput.value = '';
+
+      loader.classList.remove('hidden');
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userInput: message })
+        });
+
+        const result = await response.json();
+        if (result.response) {
+          await typeMessage(result.response, 'bot');
+        } else {
+          displayMessage('Sorry, I couldn\'t process your request.', 'bot');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        displayMessage('Error connecting to server.', 'bot');
+      } finally {
+        loader.classList.add('hidden');
+      }
+    }
+
+    function displayMessage(text, sender) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('flex', sender === 'user' ? 'justify-end' : 'justify-start');
+
+      const bubble = document.createElement('div');
+      bubble.className = `max-w-[70%] px-5 py-3 rounded-2xl font-medium tracking-wide ${
+        sender === 'user'
+        ? 'bg-gradient-to-r from-purple-600 to-indigo-700 text-white'
+        : 'bg-gray-700 text-gray-300 shadow-md'
+      } text-base leading-relaxed transition-all duration-300 transform scale-95`;
+
+      bubble.textContent = text;
+      messageDiv.appendChild(bubble);
+      chatHistory.appendChild(messageDiv);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // Typing Animation
+    async function typeMessage(text, sender) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('flex', sender === 'user' ? 'justify-end' : 'justify-start');
+
+      const bubble = document.createElement('div');
+      bubble.className = `max-w-[70%] px-5 py-3 rounded-2xl font-medium tracking-wide ${
+        sender === 'user'
+        ? 'bg-gradient-to-r from-purple-600 to-indigo-700 text-white'
+        : 'bg-gray-700 text-gray-300 shadow-md'
+      } text-base leading-relaxed transition-all duration-300 transform scale-95`;
+
+      messageDiv.appendChild(bubble);
+      chatHistory.appendChild(messageDiv);
+
+      for (let i = 0; i < text.length; i++) {
+        bubble.textContent += text.charAt(i);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        await new Promise(resolve => setTimeout(resolve, 18));
+      }
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+  </script>
+</body>
+</html>
